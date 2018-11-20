@@ -37,6 +37,10 @@ namespace Amazon.Runtime.Internal
         private float _nextUpdateTime;
         private float _updateInterval = 0.1f;
         private NetworkStatus _currentNetworkStatus;
+
+        public delegate void ProgressEventHandler(float progress);
+        public static event ProgressEventHandler DownloadProgress;
+
         /// <summary>
         /// This method is called called when the script instance is
         /// being loaded.
@@ -138,8 +142,21 @@ namespace Amazon.Runtime.Internal
                         yield return null;
                     }
                     bool uploadCompleted = false;
+                    float prevProgress = 0;
+                    float currentProgress = 0;
                     while (!wwwRequest.isDone)
                     {
+                        if (request.RequestContent == null)
+                        {
+                            currentProgress = wwwRequest.progress;
+                            if (prevProgress != currentProgress)
+                            {
+                                if (DownloadProgress != null)
+                                    DownloadProgress(currentProgress);
+                            }
+                            prevProgress = currentProgress;
+                        }
+
                         var uploadProgress = wwwRequest.uploadProgress;
                         if (!uploadCompleted)
                         {
@@ -156,11 +173,12 @@ namespace Amazon.Runtime.Internal
                 else
                 {
                     var unityRequest = request as UnityRequest;
+
                     if (unityRequest == null)
                     {
                         yield return null;
                     }
-                    
+
                     var unityWebRequest = new UnityWebRequestWrapper(
                         unityRequest.RequestUri.AbsoluteUri,
                         unityRequest.Method);
@@ -178,8 +196,21 @@ namespace Amazon.Runtime.Internal
                     }
 
                     var operation = unityWebRequest.Send();
+                    float prevProgress = 0;
+                    float currentProgress = 0;
                     while (!operation.isDone)
                     {
+                        if (request.RequestContent == null)
+                        {
+                            currentProgress = unityWebRequest.DownloadProgress;
+                            if (prevProgress != currentProgress)
+                            {
+                                if (DownloadProgress != null)
+                                    DownloadProgress(currentProgress);
+                            }
+                            prevProgress = currentProgress;
+                        }
+
                         var uploadProgress = operation.progress;
                         if (!uploadCompleted)
                         {
